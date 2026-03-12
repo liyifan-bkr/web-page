@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Hydra PBR Rendering Pipeline Roadmap (PC and Mobile)</title>
+<style>
+  :root { --bg: #0d1117; --card: #161b22; --border: #30363d; --text: #e6edf3; --muted: #8b949e; --blue: #58a6ff; --keep: #2d6a4f; --core: #99710a; --enhance: #1f6feb; --out: #6b7280; }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: -apple-system, "Segoe UI", Helvetica, Arial, sans-serif; background: var(--bg); color: var(--text); line-height: 1.65; padding: 40px 20px; }
+  .container { max-width: 1240px; margin: 0 auto; }
+  h1 { font-size: 28px; margin-bottom: 10px; border-bottom: 1px solid var(--border); padding-bottom: 12px; }
+  h2 { font-size: 22px; margin: 36px 0 14px; color: var(--blue); border-bottom: 1px solid var(--border); padding-bottom: 8px; }
+  h3 { font-size: 17px; margin: 20px 0 10px; }
+  p, li { font-size: 14px; }
+  blockquote { border-left: 3px solid var(--muted); color: var(--muted); padding: 6px 14px; margin: 8px 0 16px; font-size: 14px; }
+  hr { border: none; border-top: 1px solid var(--border); margin: 30px 0; }
+  table { width: 100%; border-collapse: collapse; margin: 10px 0 22px; font-size: 13px; }
+  th { text-align: left; background: var(--card); border: 1px solid var(--border); padding: 8px 10px; white-space: nowrap; }
+  td { border: 1px solid var(--border); padding: 7px 10px; vertical-align: top; }
+  tr:nth-child(even) td { background: rgba(22,27,34,0.55); }
+  pre { background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 14px; overflow-x: auto; margin: 10px 0 18px; }
+  code { font-family: Consolas, "Cascadia Code", monospace; font-size: 12px; }
+  p { margin: 8px 0 14px; }
+  ol, ul { margin: 6px 0 16px 22px; }
+  a { color: #79c0ff; text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  .legend { display: flex; flex-wrap: wrap; gap: 16px; margin: 8px 0 14px; font-size: 13px; }
+  .legend .tag { border: 1px solid var(--border); border-radius: 999px; padding: 4px 10px; background: var(--card); }
+  .tag.keep { color: #7ee787; border-color: rgba(46,160,67,0.55); }
+  .tag.core { color: #f2cc60; border-color: rgba(233,196,106,0.55); }
+  .tag.enhance { color: #79c0ff; border-color: rgba(31,111,235,0.55); }
+  .tag.out { color: #c9d1d9; border-color: rgba(107,114,128,0.65); }
+  .pipeline { display: flex; flex-direction: column; gap: 0; margin: 14px 0; }
+  .stage { border: 1px solid var(--border); background: var(--card); border-radius: 8px; padding: 12px 14px; }
+  .arrow { text-align: center; color: var(--muted); font-size: 18px; line-height: 1.2; padding: 2px 0; }
+  .stage-title { font-weight: 700; color: var(--blue); margin-bottom: 8px; font-size: 13px; }
+  .nodes { display: flex; flex-wrap: wrap; gap: 8px; }
+  .node { border-radius: 6px; color: #fff; padding: 7px 10px; font-size: 12px; line-height: 1.4; white-space: pre-line; }
+  .node.keep { background: var(--keep); }
+  .node.core { background: var(--core); }
+  .node.enhance { background: var(--enhance); }
+  .node.out { background: var(--out); }
+</style>
+</head>
+<body><div class="container">
+<h1>Hydra PBR Rendering Pipeline Roadmap (PC and Mobile)</h1>
+<blockquote>🎯 Reference baseline: Unreal Engine 4.27 deferred shading pipeline<br>🧭 Status markers: ✅ Completed / ⚠️ Partially Completed / ❌ Not Yet Started<br>📌 Planning stages: 🟢 Maintain / 🟡 Current Delivery Focus / 🔵 Next-Phase Enhancements / ⚪ Future Exploratory Work</blockquote>
+<hr>
+<h2>1. Target Rendering Pipeline Overview 🗺️</h2>
+<h3>1.1 Overall Flow and Delivery Status</h3>
+<blockquote>Green = 🟢 Maintain; Yellow = 🟡 Current Delivery Focus; Blue = 🔵 Next-Phase Enhancements; Gray-White = ⚪ Future Exploratory Work</blockquote>
+<div class="legend">
+  <span class="tag keep">🟢 Maintain</span>
+  <span class="tag core">🟡 Current Delivery Focus</span>
+  <span class="tag enhance">🔵 Next-Phase Enhancements</span>
+  <span class="tag out">⚪ Future Exploratory Work</span>
+</div>
+<div class="pipeline">
+  <div class="stage"><div class="stage-title">1 · Setup</div><div class="nodes"><div class="node keep">GlobalParams · HiZ · Cull · Jitter</div></div></div>
+  <div class="arrow">↓</div>
+  <div class="stage"><div class="stage-title">2 · Shadow</div><div class="nodes"><div class="node keep">Cascaded Shadow Maps (CSM) 3+1</div><div class="node keep">Adaptive Shadow Maps (ASM): full feature set on PC, core capability retained on Mobile</div><div class="node core">Character AO bounding box + Screen Space Ambient Occlusion (SSAO) enhancement
+(replacing ContactShadow)</div><div class="node out">Additional light source Shadow Atlas</div></div></div>
+  <div class="arrow">↓</div>
+  <div class="stage"><div class="stage-title">3 · GBuffer</div><div class="nodes"><div class="node keep">Depth pre-pass -> GBuffer (4 render targets) + motion vectors -> depth copy</div><div class="node enhance">Motion vectors are mandatory on PC</div><div class="node core">Mobile motion-vector storage strategy
+(dedicated RT preferred, channel merge under evaluation)</div><div class="node out">Deferred decals / DBuffer</div></div></div>
+  <div class="arrow">↓</div>
+  <div class="stage"><div class="stage-title">4 · Lighting</div><div class="nodes"><div class="node keep">Deferred Lighting · StandardPBR</div><div class="node keep">Clustered multi-lighting</div><div class="node keep">Image-based lighting (single SkyLight)</div><div class="node out">Multiple Reflection Captures</div></div></div>
+  <div class="arrow">↓</div>
+  <div class="stage"><div class="stage-title">5 · Terrain</div><div class="nodes"><div class="node core">Terrain Base Pass</div><div class="node core">Terrain Runtime Virtual Texture (RVT) pass</div><div class="node enhance">PC terrain/mesh pass (GPU-driven)</div><div class="node core">Mobile TerrainToMesh (offline-generated Mesh, directly rendered in Opaque)</div></div></div>
+  <div class="arrow">↓</div>
+  <div class="stage"><div class="stage-title">6 · Vegetation</div><div class="nodes"><div class="node core">Grass pass (indirect draw)</div><div class="node core">Tree Pass</div></div></div>
+  <div class="arrow">↓</div>
+  <div class="stage"><div class="stage-title">7 · Screen Space &amp; Transparent</div><div class="nodes"><div class="node keep">Screen Space Ambient Occlusion (SSAO) / XeGTAO</div><div class="node enhance">Screen Space Reflections (SSR)</div><div class="node enhance">Screen Space Global Illumination (SSGI) scene-specific enhancement</div><div class="node keep">Forward Transparent · Outline · VFX</div></div></div>
+  <div class="arrow">↓</div>
+  <div class="stage"><div class="stage-title">8 · AA / Upscale</div><div class="nodes"><div class="node enhance">PC: NVIDIA DLSS / AMD FSR 3</div><div class="node core">Mobile: Temporal Anti-Aliasing Upsampling (TAAU)</div><div class="node core">Temporal upscaling stability enhancement (TAAU) (Ghosting/Reject)</div></div></div>
+  <div class="arrow">↓</div>
+  <div class="stage"><div class="stage-title">9 · Post &amp; Output</div><div class="nodes"><div class="node keep">Exposure · Bloom · Tonemap · LUT</div><div class="node keep">UI -> final blit</div><div class="node core">ACES tone mapping</div><div class="node enhance">Independent depth-of-field (DOF) and related enhancement effects</div></div></div>
+</div>
+<h3>1.2 PC / Mobile Delivery Strategy</h3>
+<table>
+<tr><th>Dimension</th><th>PC Pipeline</th><th>Mobile Pipeline</th><th>Differentiation Goal</th></tr>
+<tr><td>Rendering organization</td><td>Deferred main chain + Terrain-stage GPU Driven Mesh Pass</td><td>Deferred main chain + TerrainToMesh offline-generated Mesh then directly rendered in Opaque</td><td>Keep a unified lighting framework while splitting runtime geometry cost</td></tr>
+<tr><td>Motion Vector</td><td>Required, RG16F, supports MV invalidation detection and fallback</td><td>Low-precision dedicated RT preferred, channel merge can be evaluated</td><td>Ensure temporal stability while controlling bandwidth</td></tr>
+<tr><td>Shadow chain</td><td>CSM + ASM (full ASM features enabled)</td><td>CSM + ASM (core capabilities retained)</td><td>Keep primary shadows consistent while controlling sampling cost on mobile</td></tr>
+<tr><td>Contact shadow expression</td><td>Character AO bounding box + Screen Space Ambient Occlusion (SSAO) enhancement</td><td>Character AO bounding box + Screen Space Ambient Occlusion (SSAO) enhancement (low-cost parameter set)</td><td>Unify art direction and reduce platform divergence</td></tr>
+<tr><td>Anti-aliasing / upscaling</td><td>DLSS (NVIDIA) + FSR3</td><td>TAAU</td><td>PC pursues visual ceiling, Mobile prioritizes frame stability</td></tr>
+<tr><td>Screen-space effects</td><td>Screen Space Reflections (SSR) always on, SSGI enabled by scene need</td><td>Screen Space Reflections (SSR)/SSGI trimmed by quality tier and budget</td><td>Control post-processing GPU peaks</td></tr>
+<tr><td>Terrain and vegetation rendering</td><td>Terrain Base + RVT; Grass DrawIndirect; separate Tree pass</td><td>TerrainToMesh assetization; simplified Grass/Tree LOD strategy</td><td>Improve scene stability and draw-call controllability</td></tr>
+<tr><td>Transparent and VFX chain</td><td>Transparent + high-quality glass/water path</td><td>Transparent Lite + key-VFX whitelist</td><td>Control overdraw and mobile bandwidth</td></tr>
+<tr><td>Character skin (3S)</td><td>Base 3S + (PC-only enhancements: screen-space SSS convolution, dual-lobe highlights)</td><td>Simplified base 3S kernel + downsampled parameter set</td><td>Preserve character appearance while constraining compute cost</td></tr>
+<tr><td>Character hair (anisotropy)</td><td>Anisotropic GGX + high-quality close-up highlights</td><td>Simplified anisotropic branch + unified near/far parameters</td><td>Reduce flicker and high-frequency noise</td></tr>
+<tr><td>Character eyeball/eye shadow</td><td>Eyeball scattering chain + full eye-shadow grading parameters</td><td>Simplified eyeball scattering + clipped eye-shadow parameter set</td><td>Preserve facial recognition features</td></tr>
+<tr><td>Character fabric / ClearCoat</td><td>High-quality Fabric / ClearCoat BRDF branches (PC-only, subsequent enhancement)</td><td>Falls back to standard PBR branch by default</td><td>Prevent shader cost from going out of control on low/mid devices</td></tr>
+<tr><td>Vegetation material traits</td><td>Separate grass/tree materials with complete wind field and detail normal support</td><td>Separate grass/tree materials with reduced texture sampling and wind hierarchy</td><td>Preserve vegetation layering with controllable performance</td></tr>
+<tr><td>Terrain material traits</td><td>RVT + multi-layer blend + detail normals</td><td>Single integrated material after TerrainToMesh, reduced layer blending</td><td>Reduce terrain pixel cost</td></tr>
+<tr><td>Water / glass material traits</td><td>Refraction, depth shading, absorption, and high-quality reflections</td><td>Simplified refraction, limited real-time reflections and layer count</td><td>Ensure usable quality under frame-time budget</td></tr>
+<tr><td>Material variant strategy</td><td>Keep high-quality keyword combinations</td><td>Strictly trim shader variants</td><td>Reduce package size and runtime switching cost</td></tr>
+<tr><td>Texture and sampling strategy</td><td>Core assets can use higher resolution and sampling levels</td><td>Unified ASTC tiers + capped high-order sampling</td><td>Stabilize memory footprint and bandwidth</td></tr>
+<tr><td>Quality tier strategy</td><td>Fine-grained High / Ultra tiers</td><td>Low / Mid prioritized, key features enabled via whitelist</td><td>Build a configurable cross-platform quality matrix</td></tr>
+<tr><td>Resource and acceptance workflow</td><td>Focus on RenderDoc/screenshot baseline comparison</td><td>Add thermal control and long-duration frame stability baselines</td><td>Establish unified acceptance criteria for "quality-performance-stability"</td></tr>
+<tr><td>Development priority</td><td>Unimplemented PC items move to subsequent enhancement; core phase focuses on compatibility verification</td><td>Current core phase focuses on closing the Mobile main chain loop (MV/TAAU/TerrainToMesh)</td><td>Ensure mobile delivery first, then recover PC quality ceiling</td></tr>
+</table>
+<h3>1.3 GBuffer Planned Layout</h3>
+<table>
+<tr><th>RT</th><th>Format (Target)</th><th>Content</th></tr>
+<tr><td>G0</td><td>B10G11R11</td><td>Emission</td></tr>
+<tr><td>G1</td><td>RGBA8</td><td>Normal(BFN) + Roughness</td></tr>
+<tr><td>G2</td><td>RGBA8</td><td>Specular + MaterialID</td></tr>
+<tr><td>G3</td><td>RGBA8</td><td>Albedo + Occlusion</td></tr>
+<tr><td>Depth</td><td>D32F</td><td>Depth</td></tr>
+<tr><td>MV(PC)</td><td>RG16F</td><td>Motion Vector (required)</td></tr>
+<tr><td>MV(Mobile)</td><td>Low-precision dedicated RT (preferred) / reused channels (pre-research)</td><td>Motion Vector</td></tr>
+</table>
+<hr>
+<h2>2. Full Material and Pipeline Feature Inventory 📋</h2>
+<blockquote>Unified sorting rule: <code>🟢 Maintain -&gt; 🟡 Current Delivery Focus -&gt; 🔵 Next-Phase Enhancements -&gt; ⚪ Future Exploratory Work (within each stage: Completed &gt; Partially Completed &gt; Not Yet Started; within each status: sort by ID ascending)</code>.</blockquote>
+<h3>A. Character Materials</h3>
+<table>
+<tr><th>ID</th><th>Feature</th><th>Current Status</th><th>Planning Stage</th><th>Platform</th><th>Notes</th><th>Estimated Delivery Effort</th></tr>
+<tr><td><a id="a05"></a>A05</td><td>Character Metallic workflow</td><td>✅ Completed</td><td>🟡 Current Delivery Focus</td><td>PC & Mobile</td><td>Fits the current GBuffer contract</td><td>-</td></tr>
+<tr><td><a id="a06"></a>A06</td><td>Character Specular workflow</td><td>✅ Completed</td><td>🟡 Current Delivery Focus</td><td>PC & Mobile</td><td>Compatible with the current lighting branch</td><td>-</td></tr>
+<tr><td><a id="a07"></a>A07</td><td>MaterialID system</td><td>✅ Completed</td><td>🟡 Current Delivery Focus</td><td>PC & Mobile</td><td>Encoding/decoding available</td><td>-</td></tr>
+<tr><td><a id="a08"></a>A08</td><td>GBuffer 4RT encoding</td><td>✅ Completed</td><td>🟡 Current Delivery Focus</td><td>PC & Mobile</td><td>Consistent with the Deferred main chain</td><td>-</td></tr>
+<tr><td><a id="a01"></a>A01</td><td>Skin shader</td><td>⚠️ Partially Completed</td><td>🟡 Current Delivery Focus</td><td>PC & Mobile</td><td>Needs unified parameters and quality-tier paths</td><td>1~2w</td></tr>
+<tr><td><a id="a02"></a>A02</td><td>Hair shader</td><td>⚠️ Partially Completed</td><td>🟡 Current Delivery Focus</td><td>PC & Mobile</td><td>Needs near/far consistency completion</td><td>1~2w</td></tr>
+<tr><td><a id="a03"></a>A03</td><td>Eyeball shader</td><td>⚠️ Partially Completed</td><td>🟡 Current Delivery Focus</td><td>PC & Mobile</td><td>Needs mobile presentation and parameter alignment</td><td>1w</td></tr>
+<tr><td><a id="a04"></a>A04</td><td>Eye shadow shader</td><td>⚠️ Partially Completed</td><td>🟡 Current Delivery Focus</td><td>PC & Mobile</td><td>Needs material parameter completion and post-process coupling validation</td><td>3~5d</td></tr>
+<tr><td><a id="a09"></a>A09</td><td>Burley Diffuse</td><td>⚠️ Partially Completed</td><td>🟡 Current Delivery Focus</td><td>PC & Mobile</td><td>Upgrade from Lambert to Burley</td><td>2d</td></tr>
+<tr><td><a id="a15"></a>A15</td><td>Hair anisotropic GGX</td><td>⚠️ Partially Completed</td><td>🟡 Current Delivery Focus</td><td>PC & Mobile</td><td>Upgrade from Kajiya-Kay</td><td>1~2w</td></tr>
+<tr><td><a id="a16"></a>A16</td><td>Eyeball material scattering</td><td>⚠️ Partially Completed</td><td>🟡 Current Delivery Focus</td><td>PC & Mobile</td><td>Complete eyeball scattering chain and parameters</td><td>1w</td></tr>
+<tr><td><a id="a10"></a>A10</td><td>Specular AA</td><td>❌ Not Yet Started</td><td>🟡 Current Delivery Focus</td><td>PC & Mobile</td><td>Add normal-curvature-to-roughness correction</td><td>2~3d</td></tr>
+<tr><td><a id="a11"></a>A11</td><td>Fabric shading</td><td>⚠️ Partially Completed</td><td>🔵 Next-Phase Enhancements</td><td>PC</td><td>PC-only: complete Fabric-specific branch</td><td>1~2w</td></tr>
+<tr><td><a id="a13"></a>A13</td><td>Screen-space SSS convolution</td><td>⚠️ Partially Completed</td><td>🔵 Next-Phase Enhancements</td><td>PC</td><td>PC-only: add a dedicated convolution pass</td><td>2~3w</td></tr>
+<tr><td><a id="a14"></a>A14</td><td>Skin dual-lobe specular</td><td>⚠️ Partially Completed</td><td>🔵 Next-Phase Enhancements</td><td>PC</td><td>PC-only: improve close-up highlight layering</td><td>3~5d</td></tr>
+<tr><td><a id="a12"></a>A12</td><td>Clear Coat</td><td>❌ Not Yet Started</td><td>🔵 Next-Phase Enhancements</td><td>PC</td><td>PC-only: add dual-layer BRDF</td><td>1~2w</td></tr>
+<tr><td><a id="a17"></a>A17</td><td>Character AO Box asset workflow</td><td>❌ Not Yet Started</td><td>🔵 Next-Phase Enhancements</td><td>PC & Mobile</td><td>Bind character bounding-box parameters, export spec, and material input validation</td><td>1~2w</td></tr>
+</table>
+<h3>B. Scene Materials</h3>
+<table>
+<tr><th>ID</th><th>Feature</th><th>Current Status</th><th>Planning Stage</th><th>Platform</th><th>Notes</th><th>Estimated Delivery Effort</th></tr>
+<tr><td><a id="b01"></a>B01</td><td>Environment Metallic workflow</td><td>✅ Completed</td><td>🟡 Current Delivery Focus</td><td>PC & Mobile</td><td>Serves as the unified target workflow</td><td>-</td></tr>
+<tr><td><a id="b02"></a>B02</td><td>env_lit</td><td>✅ Completed</td><td>🟡 Current Delivery Focus</td><td>PC & Mobile</td><td>Converges into the Metallic workflow</td><td>3~5d</td></tr>
+<tr><td><a id="b03"></a>B03</td><td>env_scaletilling</td><td>✅ Completed</td><td>🟡 Current Delivery Focus</td><td>PC & Mobile</td><td>Converges into the Metallic workflow</td><td>2~3d</td></tr>
+<tr><td><a id="b12"></a>B12</td><td>Material quality tiers (PC/Mobile)</td><td>⚠️ Partially Completed</td><td>🟡 Current Delivery Focus</td><td>PC & Mobile</td><td>Unified keywords and variant trimming strategy</td><td>4~6d</td></tr>
+<tr><td><a id="b04"></a>B04</td><td>Generic transparent effects</td><td>❌ Not Yet Started</td><td>🟡 Current Delivery Focus</td><td>PC & Mobile</td><td>Keep existing effects for now</td><td>-</td></tr>
+<tr><td><a id="b05"></a>B05</td><td>Terrain shader (Base)</td><td>❌ Not Yet Started</td><td>🟡 Current Delivery Focus</td><td>PC & Mobile</td><td>Scene-critical; complete baseline terrain material</td><td>2~3w</td></tr>
+<tr><td><a id="b06"></a>B06</td><td>Terrain RVT pass</td><td>❌ Not Yet Started</td><td>🟡 Current Delivery Focus</td><td>PC & Mobile</td><td>Add dedicated pass to render RVT</td><td>1~2w</td></tr>
+<tr><td><a id="b07"></a>B07</td><td>Vegetation - Grass shader</td><td>❌ Not Yet Started</td><td>🟡 Current Delivery Focus</td><td>PC & Mobile</td><td>Grass needs a dedicated pass using DrawIndirect</td><td>2~3w</td></tr>
+<tr><td><a id="b08"></a>B08</td><td>Vegetation - Tree shader</td><td>❌ Not Yet Started</td><td>🟡 Current Delivery Focus</td><td>PC & Mobile</td><td>Split tree/grass, independent materials and wind parameters</td><td>1~2w</td></tr>
+<tr><td><a id="b10"></a>B10</td><td>Glass/Transparent PBR</td><td>⚠️ Partially Completed</td><td>🔵 Next-Phase Enhancements</td><td>PC & Mobile</td><td>Upgrade from generic transparency to PBR</td><td>1~2w</td></tr>
+<tr><td><a id="b09"></a>B09</td><td>Water shader</td><td>❌ Not Yet Started</td><td>🔵 Next-Phase Enhancements</td><td>PC & Mobile</td><td>Refraction + depth shading</td><td>3~4w</td></tr>
+<tr><td><a id="b14"></a>B14</td><td>River shader (FlowMap/Spline)</td><td>❌ Not Yet Started</td><td>🔵 Next-Phase Enhancements</td><td>PC & Mobile</td><td>Complete river speed, flow direction, and shoreline blending</td><td>2~3w</td></tr>
+<tr><td><a id="b15"></a>B15</td><td>Lake/Still-water shader</td><td>❌ Not Yet Started</td><td>🔵 Next-Phase Enhancements</td><td>PC & Mobile</td><td>Complete still-water reflection, absorption, and shallow-water transition</td><td>1~2w</td></tr>
+<tr><td><a id="b16"></a>B16</td><td>Waterfall/Splash material</td><td>❌ Not Yet Started</td><td>🔵 Next-Phase Enhancements</td><td>PC & Mobile</td><td>Complete waterfall master material and foam-linked parameters</td><td>1~2w</td></tr>
+<tr><td><a id="b17"></a>B17</td><td>Wetland/Puddle material</td><td>❌ Not Yet Started</td><td>🔵 Next-Phase Enhancements</td><td>PC & Mobile</td><td>Complete post-rain wetness, puddles, and ground blending</td><td>1~2w</td></tr>
+<tr><td><a id="b18"></a>B18</td><td>Road/Rut material</td><td>❌ Not Yet Started</td><td>🔵 Next-Phase Enhancements</td><td>PC & Mobile</td><td>Complete road wear, ruts, and mud blending</td><td>1~2w</td></tr>
+<tr><td><a id="b19"></a>B19</td><td>Rock wall/Cliff layered material</td><td>❌ Not Yet Started</td><td>🔵 Next-Phase Enhancements</td><td>PC & Mobile</td><td>Complete rock stratification, weathering, and macro noise</td><td>1~2w</td></tr>
+<tr><td><a id="b20"></a>B20</td><td>Surface - Asphalt/Tar material</td><td>❌ Not Yet Started</td><td>🔵 Next-Phase Enhancements</td><td>PC & Mobile</td><td>Align with common UE4 realistic road materials (granularity, wear, rain marks)</td><td>1~2w</td></tr>
+<tr><td><a id="b21"></a>B21</td><td>Surface - Concrete/Cement material</td><td>❌ Not Yet Started</td><td>🔵 Next-Phase Enhancements</td><td>PC & Mobile</td><td>Align with common UE4 realistic hard-surface materials (cracks, stains, roughness zoning)</td><td>1~2w</td></tr>
+<tr><td><a id="b22"></a>B22</td><td>Architecture - Brick/Stone wall material</td><td>❌ Not Yet Started</td><td>🔵 Next-Phase Enhancements</td><td>PC & Mobile</td><td>Align with common UE4 realistic wall materials (height variation, weathering, seams)</td><td>1~2w</td></tr>
+<tr><td><a id="b23"></a>B23</td><td>Architecture - Plaster/Painted wall material</td><td>❌ Not Yet Started</td><td>🔵 Next-Phase Enhancements</td><td>PC & Mobile</td><td>Align with common UE4 realistic plastered wall materials (dirt, peeling paint, efflorescence)</td><td>1~2w</td></tr>
+<tr><td><a id="b24"></a>B24</td><td>Metal - Painted/Rusted material</td><td>❌ Not Yet Started</td><td>🔵 Next-Phase Enhancements</td><td>PC & Mobile</td><td>Align with common UE4 realistic metal materials (edge wear, rust masks)</td><td>1~2w</td></tr>
+<tr><td><a id="b25"></a>B25</td><td>Wood - Plank/Timber material</td><td>❌ Not Yet Started</td><td>🔵 Next-Phase Enhancements</td><td>PC & Mobile</td><td>Align with common UE4 realistic wood materials (ring direction, aging, moisture variation)</td><td>1~2w</td></tr>
+<tr><td><a id="b11"></a>B11</td><td>Deferred decals / DBuffer</td><td>❌ Not Yet Started</td><td>⚪ Future Exploratory Work</td><td>PC</td><td>Subsequent exploration item</td><td>-</td></tr>
+</table>
+<h3>C. Rendering Pipeline</h3>
+<table>
+<tr><th>ID</th><th>Feature</th><th>Current Status</th><th>Planning Stage</th><th>Platform</th><th>Notes</th><th>Estimated Delivery Effort</th></tr>
+<tr><td><a id="c01"></a>C01</td><td>Deferred Shading main chain</td><td>✅ Completed</td><td>🟢 Maintain</td><td>PC & Mobile</td><td>Stable GBuffer + Deferred Lighting</td><td>-</td></tr>
+<tr><td><a id="c02"></a>C02</td><td>CSM cascaded shadows</td><td>✅ Completed</td><td>🟢 Maintain</td><td>PC & Mobile</td><td>Maintain primary shadow chain</td><td>-</td></tr>
+<tr><td><a id="c03"></a>C03</td><td>ASM adaptive shadows</td><td>✅ Completed</td><td>🟢 Maintain</td><td>PC & Mobile (PC-focused)</td><td>PC enables full ASM features; Mobile retains ASM baseline capability</td><td>-</td></tr>
+<tr><td><a id="c04"></a>C04</td><td>Screen Space Ambient Occlusion (SSAO) / XeGTAO</td><td>✅ Completed</td><td>🟢 Maintain</td><td>PC & Mobile</td><td>Maintain AO main chain</td><td>-</td></tr>
+<tr><td><a id="c08"></a>C08</td><td>Bloom / MotionBlur / LUT / Tonemap</td><td>✅ Completed</td><td>🟢 Maintain</td><td>PC & Mobile</td><td>Maintain post-processing main chain</td><td>-</td></tr>
+<tr><td><a id="c09"></a>C09</td><td>Auto-exposure histogram</td><td>✅ Completed</td><td>🟢 Maintain</td><td>PC & Mobile</td><td>Consistent with post-processing main chain</td><td>-</td></tr>
+<tr><td><a id="c10"></a>C10</td><td>Hi-Z / Outline / Transparent</td><td>✅ Completed</td><td>🟢 Maintain</td><td>PC & Mobile</td><td>Maintain tool chain and effect chain</td><td>-</td></tr>
+<tr><td><a id="c07"></a>C07</td><td>PRT GI</td><td>⚠️ Partially Completed</td><td>🟡 Current Delivery Focus</td><td>PC & Mobile</td><td>Needs full workflow completion and target effect convergence</td><td>-</td></tr>
+<tr><td><a id="c12"></a>C12</td><td>Mobile motion-vector storage strategy</td><td>⚠️ Partially Completed</td><td>🟡 Current Delivery Focus</td><td>Mobile</td><td>Dedicated RT preferred, channel merge under pre-research</td><td>1~2w</td></tr>
+<tr><td><a id="c22"></a>C22</td><td>ACES tone mapping</td><td>⚠️ Partially Completed</td><td>🟡 Current Delivery Focus</td><td>PC & Mobile</td><td>Reserved as a quality enhancement item</td><td>2~3d</td></tr>
+<tr><td><a id="c14"></a>C14</td><td>Mobile TAAU</td><td>❌ Not Yet Started</td><td>🟡 Current Delivery Focus</td><td>Mobile</td><td>Unified TAAU solution for mobile</td><td>2~3w</td></tr>
+<tr><td><a id="c17"></a>C17</td><td>Mobile Mesh Pass (TerrainToMesh)</td><td>❌ Not Yet Started</td><td>🟡 Current Delivery Focus</td><td>Mobile</td><td>Offline-generated Mesh rendered directly in Opaque</td><td>2~3w</td></tr>
+<tr><td><a id="c24"></a>C24</td><td>TAAU stability enhancement</td><td>❌ Not Yet Started</td><td>🟡 Current Delivery Focus</td><td>PC & Mobile</td><td>History rejection / ghosting suppression tuning</td><td>1~2w</td></tr>
+<tr><td><a id="c05"></a>C05</td><td>Screen Space Reflections (SSR)</td><td>⚠️ Partially Completed</td><td>🔵 Next-Phase Enhancements</td><td>PC-focused</td><td>Needs tuning to target quality then stabilization</td><td>-</td></tr>
+<tr><td><a id="c06"></a>C06</td><td>SSGI</td><td>⚠️ Partially Completed</td><td>🔵 Next-Phase Enhancements</td><td>PC-focused</td><td>Needs tuning to target quality then stabilization</td><td>1~2w</td></tr>
+<tr><td><a id="c11"></a>C11</td><td>Motion vectors are mandatory on PC strategy</td><td>⚠️ Partially Completed</td><td>🔵 Next-Phase Enhancements</td><td>PC</td><td>MV invalidation detection, fallback, and validation chain</td><td>1~2w</td></tr>
+<tr><td><a id="c13"></a>C13</td><td>PC anti-aliasing path (DLSS/FSR3)</td><td>⚠️ Partially Completed</td><td>🔵 Next-Phase Enhancements</td><td>PC</td><td>Cover both DLSS (NVIDIA) and FSR3 paths</td><td>2~3w</td></tr>
+<tr><td><a id="c25"></a>C25</td><td>Env BRDF LUT</td><td>⚠️ Partially Completed</td><td>🔵 Next-Phase Enhancements</td><td>PC & Mobile</td><td>Upgrade from analytical approximation to LUT</td><td>2~3d</td></tr>
+<tr><td><a id="c15"></a>C15</td><td>ContactShadow replacement solution</td><td>❌ Not Yet Started</td><td>🔵 Next-Phase Enhancements</td><td>PC & Mobile</td><td>Character AO bounding box + Screen Space Ambient Occlusion (SSAO) enhancement</td><td>1~2w</td></tr>
+<tr><td><a id="c16"></a>C16</td><td>PC Mesh standalone pass (GPU Driven)</td><td>❌ Not Yet Started</td><td>🔵 Next-Phase Enhancements</td><td>PC</td><td>Use GPU Driven mesh rendering</td><td>2~3w</td></tr>
+<tr><td><a id="c23"></a>C23</td><td>Independent DOF</td><td>❌ Not Yet Started</td><td>🔵 Next-Phase Enhancements</td><td>PC & Mobile</td><td>Post-processing enhancement item</td><td>2~3w</td></tr>
+<tr><td><a id="c18"></a>C18</td><td>Additional light source Shadow Atlas</td><td>❌ Not Yet Started</td><td>⚪ Future Exploratory Work</td><td>PC</td><td>Subsequent exploration item</td><td>-</td></tr>
+<tr><td><a id="c19"></a>C19</td><td>Deferred decals / DBuffer</td><td>❌ Not Yet Started</td><td>⚪ Future Exploratory Work</td><td>PC</td><td>Subsequent exploration item</td><td>-</td></tr>
+<tr><td><a id="c20"></a>C20</td><td>Multiple Reflection Captures</td><td>❌ Not Yet Started</td><td>⚪ Future Exploratory Work</td><td>PC</td><td>Subsequent exploration item</td><td>-</td></tr>
+</table>
+<hr>
+<h2>3. Progress Snapshot 📊</h2>
+<h3>3.1 Statistics by Planning Stage</h3>
+<table>
+<tr><th>Category</th><th>Maintain</th><th>Current Delivery Focus</th><th>Next-Phase Enhancements</th><th>Future Exploratory Work</th><th>Not in Scope</th><th>Total</th></tr>
+<tr><td>Character Materials (A)</td><td>0</td><td>12</td><td>5</td><td>0</td><td>0</td><td>17</td></tr>
+<tr><td>Scene Materials (B)</td><td>0</td><td>9</td><td>14</td><td>1</td><td>0</td><td>24</td></tr>
+<tr><td>Rendering Pipeline (C)</td><td>7</td><td>6</td><td>8</td><td>3</td><td>0</td><td>24</td></tr>
+<tr><td>Total</td><td>7</td><td>27</td><td>27</td><td>4</td><td>0</td><td>65</td></tr>
+</table>
+<h3>3.2 Statistics by Current Implementation Status</h3>
+<table>
+<tr><th>Category</th><th>Completed</th><th>Partially Completed</th><th>Not Yet Started</th><th>Total</th></tr>
+<tr><td>Character Materials (A)</td><td>4</td><td>10</td><td>3</td><td>17</td></tr>
+<tr><td>Scene Materials (B)</td><td>4</td><td>2</td><td>18</td><td>24</td></tr>
+<tr><td>Rendering Pipeline (C)</td><td>7</td><td>9</td><td>8</td><td>24</td></tr>
+<tr><td>Total</td><td>15</td><td>21</td><td>29</td><td>65</td></tr>
+</table>
+<h3>3.3 Comparison Conclusions</h3>
+<ol>
+<li>The current delivery focus includes 27 items, with priority on getting the Mobile pipeline fully production-ready (motion vectors, temporal upscaling, and TerrainToMesh, among others).</li>
+<li>The next-phase enhancement scope also includes 27 items, covering common realistic material families inspired by UE4 projects and PC-side capability backfill.</li>
+<li>The future exploratory track includes 4 items, focused on feasibility validation for additional light-source shadows, decals/DBuffer, and multiple reflection captures.</li>
+<li>There are 7 baseline items, and all of them are already stable capabilities in the current rendering pipeline.</li>
+</ol>
+<hr>
+<h2>4. Delivery Effort Estimate ⏱️</h2>
+<h3>4.1 Phase-based Estimation</h3>
+<table>
+<tr><th>Phase</th><th>Scope</th><th>Estimated Person-Weeks</th></tr>
+<tr><td>Core phase</td><td>27 current-core items (Mobile pipeline first) + cross-platform integration + quality/effect tuning</td><td>18~20 weeks</td></tr>
+<tr><td>Enhancement phase</td><td>27 subsequent-enhancement items (including deferred PC gaps), delivered in batches with effect validation</td><td>16~18 weeks</td></tr>
+<tr><td>Exploration phase</td><td>Feasibility validation and boundary confirmation for 4 subsequent-exploration items</td><td>2~3 weeks</td></tr>
+<tr><td>Stabilization phase</td><td>Full regression, performance baselines, defect convergence</td><td>2~3 weeks</td></tr>
+</table>
+<h3>4.2 Summary View</h3>
+<table>
+<tr><th>Execution Mode</th><th>Estimated Total Duration</th></tr>
+<tr><td>Sequential execution</td><td>38~44 weeks</td></tr>
+<tr><td>Parallel execution (Character/Scene/Pipeline in parallel)</td><td>32~38 weeks</td></tr>
+<tr><td>Recommended scheduling target</td><td>20 weeks (5 months) for current-core scope; ~40~42 weeks total</td></tr>
+</table>
+<hr>
+<h2>5. Milestone Plan 🚩</h2>
+<table>
+<tr><th>Milestone</th><th>Schedule Window</th><th>Goal</th><th>Deliverables</th></tr>
+<tr><td>M1 Architecture freeze</td><td>W1-W2</td><td>Freeze dual-pipeline boundaries, baseline, and benchmark scenes</td><td>Frozen flowchart/checklist version, baseline scene list</td></tr>
+<tr><td>M2 Core sprint - Character</td><td>W3-W6</td><td>Bring character core materials (skin/hair/eyeball/eye shadow/3S/anisotropy) to target</td><td>Character material main-chain regression results</td></tr>
+<tr><td>M3 Core sprint - Terrain &amp; vegetation</td><td>W7-W10</td><td>Terrain Base+RVT, grass/tree split, Grass DrawIndirect</td><td>Scene chain validation results</td></tr>
+<tr><td>M4 Core sprint - Pipeline I</td><td>W11-W14</td><td>Mobile MV strategy, Mobile TAAU, temporal stability validation on mobile</td><td>Stage acceptance of pipeline main chain</td></tr>
+<tr><td>M5 Core sprint - Pipeline II</td><td>W15-W18</td><td>Mobile TerrainToMesh + direct Opaque rendering path, PRT GI core-chain integration</td><td>Image-quality and performance comparison results</td></tr>
+<tr><td>M6 Core acceptance</td><td>W19-W20</td><td>Acceptance of 27 core capabilities</td><td>Core-version acceptance checklist</td></tr>
+<tr><td>M7 Subsequent enhancement - I</td><td>W21-W24</td><td>First batch of subsequent enhancements (character/scene materials, post-process)</td><td>Enhancement batch I validation results</td></tr>
+<tr><td>M8 Subsequent enhancement - II</td><td>W25-W28</td><td>Second batch of subsequent enhancements (PC gap backfill: MV/AA/Mesh + pipeline enhancements)</td><td>Enhancement batch II validation results</td></tr>
+<tr><td>M9 Subsequent enhancement - III</td><td>W29-W32</td><td>Converge enhanced scene material set (river/lake/waterfall/wetland/road/rock wall)</td><td>Enhancement batch III validation results</td></tr>
+<tr><td>M10 Subsequent enhancement - IV</td><td>W33-W36</td><td>Converge common UE4 realistic material families (asphalt/concrete/brick/plaster/metal/wood)</td><td>Enhancement batch IV validation results</td></tr>
+<tr><td>M11 Subsequent exploration</td><td>W37-W38</td><td>Validate subsequent-exploration items (Shadow Atlas / Decal-DBuffer / Reflection Capture)</td><td>Exploration feasibility conclusions and boundary list</td></tr>
+</table>
+<hr>
+<h2>6. Roadmap Schedule Window (Gantt View) 📈</h2>
+<h3>6.1 Monthly Progress View (with progress)</h3>
+<table>
+<tr><th>Month</th><th>Schedule Window</th><th>Track</th><th>Milestone</th><th>Planned Progress</th><th>Key Outputs</th></tr>
+<tr><td>Month 1</td><td>W01-W04</td><td>Current Delivery Focus</td><td>M1 + M2 (first half)</td><td>8% █░░░░░░░░░</td><td>Architecture freeze, character core kickoff</td></tr>
+<tr><td>Month 2</td><td>W05-W08</td><td>Current Delivery Focus</td><td>M2 (second half) + M3 (first half)</td><td>16% ██░░░░░░░░</td><td>Character main-chain convergence, terrain/vegetation groundwork</td></tr>
+<tr><td>Month 3</td><td>W09-W12</td><td>Current Delivery Focus</td><td>M3 (second half) + M4 (first half)</td><td>25% ███░░░░░░░</td><td>Mobile pipeline core integration</td></tr>
+<tr><td>Month 4</td><td>W13-W16</td><td>Current Delivery Focus</td><td>M4 (second half) + M5 (first half)</td><td>35% ████░░░░░░</td><td>Mobile MV/TAAU stabilization</td></tr>
+<tr><td>Month 5</td><td>W17-W20</td><td>Current Delivery Focus</td><td>M5 (second half) + M6</td><td>45% █████░░░░░</td><td>Core 27-item acceptance (Mobile first)</td></tr>
+<tr><td>Month 6</td><td>W21-W24</td><td>Next-Phase Enhancements</td><td>M7</td><td>57% ██████░░░░</td><td>Enhancement batch I delivery</td></tr>
+<tr><td>Month 7</td><td>W25-W28</td><td>Next-Phase Enhancements</td><td>M8</td><td>70% ███████░░░</td><td>PC gap backfill</td></tr>
+<tr><td>Month 8</td><td>W29-W32</td><td>Next-Phase Enhancements</td><td>M9</td><td>82% ████████░░</td><td>Scene enhancement material set convergence</td></tr>
+<tr><td>Month 9</td><td>W33-W36</td><td>Next-Phase Enhancements</td><td>M10</td><td>94% █████████░</td><td>Common UE4 realistic material family convergence</td></tr>
+<tr><td>Month 10</td><td>W37-W38</td><td>Future Exploratory Work</td><td>M11</td><td>100% ██████████</td><td>Exploration-item validation closure and pre-release freeze</td></tr>
+</table>
+<h3>6.2 Workflow Schedule Table (clickable index)</h3>
+<table>
+<tr><th>Workflow</th><th>Month 1 W01-W04</th><th>Month 2 W05-W08</th><th>Month 3 W09-W12</th><th>Month 4 W13-W16</th><th>Month 5 W17-W20</th><th>Month 6 W21-W24</th><th>Month 7 W25-W28</th><th>Month 8 W29-W32</th><th>Month 9 W33-W36</th><th>Month 10 W37-W38</th></tr>
+<tr><td>Character (A)</td><td>Core kickoff: <a href="#a01">A01</a>/<a href="#a02">A02</a>/<a href="#a03">A03</a>/<a href="#a04">A04</a></td><td>Core deepening: <a href="#a05">A05</a>/<a href="#a06">A06</a>/<a href="#a07">A07</a>/<a href="#a08">A08</a></td><td>Core integration: <a href="#a09">A09</a>/<a href="#a10">A10</a></td><td>Core stabilization: <a href="#a15">A15</a>/<a href="#a16">A16</a></td><td>Core acceptance</td><td>Enhancement-I: <a href="#a11">A11</a>/<a href="#a12">A12</a>/<a href="#a13">A13</a>/<a href="#a17">A17</a></td><td>Enhancement-II: <a href="#a14">A14</a></td><td>Enhancement convergence</td><td>Enhancement convergence-2</td><td>Full regression</td></tr>
+<tr><td>Scene (B)</td><td>Freeze &amp; standards: <a href="#b01">B01</a>/<a href="#b02">B02</a>/<a href="#b03">B03</a></td><td>Core development: <a href="#b04">B04</a>/<a href="#b05">B05</a>/<a href="#b06">B06</a></td><td>Core development: <a href="#b07">B07</a>/<a href="#b08">B08</a></td><td>Core development: <a href="#b12">B12</a></td><td>Core acceptance</td><td>Enhancement-I: <a href="#b09">B09</a>/<a href="#b10">B10</a></td><td>Enhancement-II: <a href="#b14">B14</a>/<a href="#b15">B15</a></td><td>Enhancement-III: <a href="#b16">B16</a>/<a href="#b17">B17</a>/<a href="#b18">B18</a>/<a href="#b19">B19</a></td><td>Enhancement-IV: <a href="#b20">B20</a>/<a href="#b21">B21</a>/<a href="#b22">B22</a>/<a href="#b23">B23</a>/<a href="#b24">B24</a>/<a href="#b25">B25</a></td><td>Subsequent exploration: <a href="#b11">B11</a> + full regression</td></tr>
+<tr><td>Pipeline (C)</td><td>Maintain calibration: <a href="#c01">C01</a>/<a href="#c02">C02</a>/<a href="#c03">C03</a>/<a href="#c04">C04</a></td><td>Core pre-research: <a href="#c12">C12</a></td><td>Core development: <a href="#c14">C14</a>/<a href="#c17">C17</a></td><td>Core development: <a href="#c07">C07</a>/<a href="#c22">C22</a>/<a href="#c24">C24</a></td><td>Core acceptance + maintain re-check: <a href="#c08">C08</a>/<a href="#c09">C09</a>/<a href="#c10">C10</a></td><td>Enhancement-I: <a href="#c05">C05</a>/<a href="#c06">C06</a>/<a href="#c15">C15</a></td><td>Enhancement-II: <a href="#c11">C11</a>/<a href="#c13">C13</a>/<a href="#c16">C16</a></td><td>Enhancement convergence: <a href="#c23">C23</a>/<a href="#c25">C25</a></td><td>Enhancement convergence-2 (PC path effect/performance)</td><td>Subsequent exploration: <a href="#c18">C18</a>/<a href="#c19">C19</a>/<a href="#c20">C20</a> + full regression</td></tr>
+<tr><td>QA &amp; Performance</td><td>Baseline setup</td><td>Scene stress test</td><td>Cross-platform profiling</td><td>Issue convergence</td><td>Core acceptance test</td><td>Enhancement batch test-I</td><td>Enhancement batch test-II</td><td>Enhancement batch test-III</td><td>Enhancement batch test-IV</td><td>Subsequent exploration validation + pre-release freeze</td></tr>
+</table>
+<h3>6.3 Track Notes</h3>
+<table>
+<tr><th>Track</th><th>Schedule Window</th><th>Notes</th></tr>
+<tr><td>Current Delivery Focus</td><td>W01-W20 (Months 1~5)</td><td>Delivery-oriented closed loop, prioritize feature completeness and stable frame time</td></tr>
+<tr><td>Next-Phase Enhancements</td><td>W21-W36 (Months 6~9)</td><td>Quality-ceiling oriented, introduce enhancement features in batches with risk control</td></tr>
+<tr><td>Future Exploratory Work</td><td>W37-W38 (Month 10)</td><td>Feasibility validation for exploratory items, output boundaries and trade-off conclusions, and complete pre-release freeze</td></tr>
+</table>
+</div></body></html>
